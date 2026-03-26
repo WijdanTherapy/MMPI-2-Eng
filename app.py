@@ -1264,8 +1264,7 @@ def create_pdf(path, client_name, age, gender, scores, validity, report_text):
         ("TOPPADDING",(0,0),(-1,-1),3),("BOTTOMPADDING",(0,0),(-1,-1),3),
         ("LEFTPADDING",(0,0),(-1,-1),5),("ALIGN",(1,0),(2,-1),"CENTER"),
     ]))
-    combo = Table([[st_t, Spacer(0.3*cm,1), p5_t]], colWidths=[7.5*cm, 0.3*cm, 9.2*cm])
-    story += [combo, Spacer(1, 0.4*cm), PageBreak()]
+    story += [st_t, Spacer(1, 0.4*cm), p5_t, Spacer(1, 0.4*cm), PageBreak()]
 
     # Harris-Lingoes
     story.append(Paragraph("HARRIS-LINGOES SUBSCALES", sec_s))
@@ -1494,6 +1493,11 @@ else:
         </div>""", unsafe_allow_html=True)
 
         # Client info — only on first page
+        # Persistent save keys so values survive page navigation
+        if "client_name_saved" not in st.session_state: st.session_state.client_name_saved = ""
+        if "age_saved"         not in st.session_state: st.session_state.age_saved = ""
+        if "gender_saved"      not in st.session_state: st.session_state.gender_saved = "— Select —"
+
         if st.session_state.current_page == 0:
             st.markdown("""<p style="font-size:0.88rem;color:#8B7355;text-align:center;
                 margin-bottom:1.5rem;line-height:1.8;">
@@ -1505,13 +1509,21 @@ else:
             col1, col2, col3 = st.columns(3)
             with col1:
                 client_name = st.text_input("Your name (optional)", placeholder="First name or initials",
+                                            value=st.session_state.client_name_saved,
                                             key="client_name_input")
+                st.session_state.client_name_saved = client_name
                 if any('\u0600' <= c <= '\u06ff' for c in (client_name or "")):
                     st.markdown('<div style="color:#D9534F;font-size:0.82rem;">⚠ Please enter your name in English only.</div>', unsafe_allow_html=True)
             with col2:
-                age = st.text_input("Age", placeholder="e.g., 35", key="age_input")
+                age = st.text_input("Age", placeholder="e.g., 35",
+                                    value=st.session_state.age_saved,
+                                    key="age_input")
+                st.session_state.age_saved = age
             with col3:
-                gender = st.selectbox("Gender", ["— Select —", "Male", "Female"], key="gender_input")
+                _gender_opts = ["— Select —", "Male", "Female"]
+                _gender_idx  = _gender_opts.index(st.session_state.gender_saved) if st.session_state.gender_saved in _gender_opts else 0
+                gender = st.selectbox("Gender", _gender_opts, index=_gender_idx, key="gender_input")
+                st.session_state.gender_saved = gender
 
         # Questions for current page
         cp = st.session_state.current_page
@@ -1566,9 +1578,9 @@ else:
         # Final submit on last page
         if cp == total_pages - 1:
             all_answered_total = len(st.session_state.responses) == 567
-            client_name = st.session_state.get("client_name_input","") or ""
+            client_name = st.session_state.get("client_name_saved","") or ""
             has_arabic  = any('\u0600' <= c <= '\u06ff' for c in client_name)
-            gender_val  = st.session_state.get("gender_input","— Select —")
+            gender_val  = st.session_state.get("gender_saved","— Select —")
 
             if not all_answered_total:
                 st.markdown(f"""<div style="background:#FFF8F0;border-left:3px solid #E07B39;
@@ -1596,7 +1608,7 @@ else:
                     validity = check_validity(scores)
                     report = generate_report(
                         client_name or "Anonymous",
-                        st.session_state.get("age_input","") or "Not provided",
+                        st.session_state.get("age_saved","") or "Not provided",
                         g, scores, validity
                     )
                     ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -1606,7 +1618,7 @@ else:
                     pdf_path = os.path.join("reports", fname)
                     try:
                         create_pdf(pdf_path, client_name or "Anonymous",
-                                   st.session_state.get("age_input","") or "N/A",
+                                   st.session_state.get("age_saved","") or "N/A",
                                    g, scores, validity, report)
                     except Exception as e:
                         st.error(f"PDF error: {e}"); st.stop()
