@@ -1549,7 +1549,7 @@ st.markdown(f"""<div style="text-align:center;font-size:0.78rem;color:#8B7355;
 
         # Navigation
 col_prev, col_mid, col_next = st.columns([1, 2, 1])
-        with col_prev:
+with col_prev:
             if cp > 0:
                 if st.button("← Previous"):
                     st.session_state.current_page -= 1; st.rerun()
